@@ -112,7 +112,9 @@ class FaceDetectionManager {
 
     try {
       if (this.videoElement.readyState >= 2) {
+        console.log('📸 Sending frame to MediaPipe...');
         await this.faceDetection.send({ image: this.videoElement });
+        console.log('✓ Frame sent successfully');
       } else {
         console.log('⏳ Video not ready, state:', this.videoElement.readyState);
       }
@@ -122,7 +124,7 @@ class FaceDetectionManager {
 
     // Continue loop
     if (this.isRunning) {
-      requestAnimationFrame(() => this.detectLoop());
+      setTimeout(() => this.detectLoop(), 100); // 10 FPS for testing
     }
   }
 
