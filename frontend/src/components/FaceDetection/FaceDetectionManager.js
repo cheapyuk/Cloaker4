@@ -1,5 +1,4 @@
 import { FaceDetection } from '@mediapipe/face_detection';
-import { Camera } from '@mediapipe/camera_utils';
 
 /**
  * FaceDetectionManager handles MediaPipe face detection
@@ -47,24 +46,25 @@ class FaceDetectionManager {
         }
       });
 
-      // Set up result callback IMMEDIATELY after creation
-      this.faceDetection.onResults((results) => {
-        console.log('👤 Faces detected:', results.detections?.length || 0);
+      // Store callback reference to ensure it persists
+      this.resultsCallback = (results) => {
+        console.log('🎯 onResults fired! Faces:', results.detections?.length || 0);
         this.handleResults(results);
-      });
+      };
       
+      // Register callback
+      this.faceDetection.onResults(this.resultsCallback);
       console.log('📝 Callback registered');
 
-      // Configure face detection options
+      // Configure and initialize
       await this.faceDetection.setOptions({
+        selfieMode: false,
         model: 'short',
         minDetectionConfidence: this.detectionConfidence,
       });
       
-      console.log('⚙️ Options configured');
-
-      // Wait for complete initialization
       await this.faceDetection.initialize();
+      console.log('✅ MediaPipe initialized');
       
       this.isInitialized = true;
       console.log('✅ FaceDetectionManager ready!');
@@ -76,7 +76,7 @@ class FaceDetectionManager {
   }
 
   /**
-   * Start face detection on a video element using Camera utility
+   * Start face detection with simple throttled loop
    * @param {HTMLVideoElement} videoElement - The video element to detect faces from
    */
   async start(videoElement) {
@@ -89,41 +89,39 @@ class FaceDetectionManager {
       return;
     }
 
-    try {
-      this.videoElement = videoElement;
+    this.videoElement = videoElement;
+    this.isRunning = true;
+    this.lastFrameTime = performance.now();
+    
+    // Start detection loop with throttling
+    const detect = () => {
+      if (!this.isRunning) return;
       
-      // Use MediaPipe Camera utility - fire-and-forget sends
-      this.camera = new Camera(videoElement, {
-        onFrame: () => {
-          // Don't await - let frames process asynchronously
-          this.faceDetection.send({ image: videoElement });
-        },
-        width: videoElement.videoWidth || 1280,
-        height: videoElement.videoHeight || 720,
-      });
+      const now = performance.now();
+      // Run at 5 FPS to avoid overwhelming
+      if (now - this.lastFrameTime >= 200) {
+        this.lastFrameTime = now;
+        
+        if (this.videoElement.readyState >= 2) {
+          console.log('📤 Sending frame...');
+          this.faceDetection.send({ image: this.videoElement });
+        }
+      }
       
-      await this.camera.start();
-      this.isRunning = true;
-      
-      console.log('FaceDetectionManager started with Camera utility');
-    } catch (error) {
-      console.error('Failed to start FaceDetectionManager:', error);
-      this.onError(error);
-      throw error;
-    }
+      requestAnimationFrame(detect);
+    };
+    
+    detect();
+    console.log('✨ Detection loop started');
   }
 
   /**
    * Stop face detection
    */
-  async stop() {
-    if (this.camera) {
-      await this.camera.stop();
-      this.camera = null;
-    }
+  stop() {
     this.isRunning = false;
     this.videoElement = null;
-    console.log('FaceDetectionManager stopped');
+    console.log('⏹️ FaceDetectionManager stopped');
   }
 
   /**
