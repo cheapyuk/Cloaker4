@@ -35,28 +35,38 @@ class FaceDetectionManager {
     }
 
     try {
+      console.log('🔄 Initializing MediaPipe Face Detection...');
+      
       // Create face detection instance
       this.faceDetection = new FaceDetection({
         locateFile: (file) => {
-          return `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`;
+          const url = `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`;
+          console.log('📦 Loading:', file);
+          return url;
         }
       });
 
-      // Configure face detection options
-      this.faceDetection.setOptions({
-        model: this.modelSelection === 0 ? 'short' : 'full',
-        minDetectionConfidence: this.detectionConfidence,
-      });
-
-      // Set up result callback
+      // Set up result callback FIRST
       this.faceDetection.onResults((results) => {
+        console.log('👤 Faces detected:', results.detections?.length || 0);
         this.handleResults(results);
       });
 
+      // Configure face detection options
+      await this.faceDetection.setOptions({
+        model: 'short',
+        minDetectionConfidence: this.detectionConfidence,
+      });
+      
+      console.log('⚙️ Options configured');
+
+      // Wait for complete initialization
+      await this.faceDetection.initialize();
+      
       this.isInitialized = true;
-      console.log('FaceDetectionManager initialized successfully');
+      console.log('✅ FaceDetectionManager ready!');
     } catch (error) {
-      console.error('Failed to initialize FaceDetectionManager:', error);
+      console.error('❌ Failed to initialize FaceDetectionManager:', error);
       this.onError(error);
       throw error;
     }
@@ -95,14 +105,19 @@ class FaceDetectionManager {
    * Detection loop
    */
   async detectLoop() {
-    if (!this.isRunning || !this.videoElement) return;
+    if (!this.isRunning || !this.videoElement) {
+      console.log('🛑 Detection loop stopped');
+      return;
+    }
 
     try {
       if (this.videoElement.readyState >= 2) {
         await this.faceDetection.send({ image: this.videoElement });
+      } else {
+        console.log('⏳ Video not ready, state:', this.videoElement.readyState);
       }
     } catch (error) {
-      console.error('Detection error:', error);
+      console.error('❌ Detection error:', error);
     }
 
     // Continue loop
