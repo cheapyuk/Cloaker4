@@ -1,7 +1,7 @@
 [
   {
     "content": "Phase 2: Get design guidelines for stereoscopic camera viewer app",
-    "status": "pending"
+    "status": "in_progress"
   },
   {
     "content": "Phase 2: Build V1 app - Camera permission flow, device enumeration, selector UI, canvas rendering, fullscreen support",
