@@ -3,7 +3,11 @@ services:
     name: cloaker4-frontend
     env: static
     buildCommand: cd frontend && yarn install && yarn build
-    staticPublishPath: frontend/build
+    staticPublishPath: ./frontend/build
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=0, must-revalidate
     routes:
       - type: rewrite
         source: /*
