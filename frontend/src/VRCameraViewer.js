@@ -219,19 +219,22 @@ const VRCameraViewer = () => {
         const videoAspect = video.videoWidth / video.videoHeight;
         const halfCanvasAspect = halfWidth / canvasHeight;
 
+        // Apply 90% zoom (10% zoom out) for better field of view
+        const zoomFactor = 0.9;
+        
         let drawWidth, drawHeight, offsetX, offsetY;
 
         if (videoAspect > halfCanvasAspect) {
           // Video is wider - fit to height
-          drawHeight = canvasHeight;
+          drawHeight = canvasHeight * zoomFactor;
           drawWidth = drawHeight * videoAspect;
           offsetX = (halfWidth - drawWidth) / 2;
-          offsetY = 0;
+          offsetY = (canvasHeight - drawHeight) / 2;
         } else {
           // Video is taller - fit to width
-          drawWidth = halfWidth;
+          drawWidth = halfWidth * zoomFactor;
           drawHeight = drawWidth / videoAspect;
-          offsetX = 0;
+          offsetX = (halfWidth - drawWidth) / 2;
           offsetY = (canvasHeight - drawHeight) / 2;
         }
 

@@ -1,5 +1,4 @@
 import { FaceDetection } from '@mediapipe/face_detection';
-import { Camera } from '@mediapipe/camera_utils';
 
 /**
  * FaceDetectionManager handles MediaPipe face detection
@@ -78,20 +77,12 @@ class FaceDetectionManager {
     }
 
     try {
-      // Create camera instance
-      this.camera = new Camera(videoElement, {
-        onFrame: async () => {
-          if (this.faceDetection && videoElement.readyState >= 2) {
-            await this.faceDetection.send({ image: videoElement });
-          }
-        },
-        width: 1920,
-        height: 1080
-      });
-
-      // Start camera
-      await this.camera.start();
+      this.videoElement = videoElement;
       this.isRunning = true;
+      
+      // Start detection loop
+      this.detectLoop();
+      
       console.log('FaceDetectionManager started');
     } catch (error) {
       console.error('Failed to start FaceDetectionManager:', error);
@@ -101,14 +92,31 @@ class FaceDetectionManager {
   }
 
   /**
+   * Detection loop
+   */
+  async detectLoop() {
+    if (!this.isRunning || !this.videoElement) return;
+
+    try {
+      if (this.videoElement.readyState >= 2) {
+        await this.faceDetection.send({ image: this.videoElement });
+      }
+    } catch (error) {
+      console.error('Detection error:', error);
+    }
+
+    // Continue loop
+    if (this.isRunning) {
+      requestAnimationFrame(() => this.detectLoop());
+    }
+  }
+
+  /**
    * Stop face detection
    */
   stop() {
-    if (this.camera) {
-      this.camera.stop();
-      this.camera = null;
-    }
     this.isRunning = false;
+    this.videoElement = null;
     console.log('FaceDetectionManager stopped');
   }
 
