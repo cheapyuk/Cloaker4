@@ -92,10 +92,11 @@ class FaceDetectionManager {
     try {
       this.videoElement = videoElement;
       
-      // Use MediaPipe Camera utility - this is the official way
+      // Use MediaPipe Camera utility - fire-and-forget sends
       this.camera = new Camera(videoElement, {
-        onFrame: async () => {
-          await this.faceDetection.send({ image: videoElement });
+        onFrame: () => {
+          // Don't await - let frames process asynchronously
+          this.faceDetection.send({ image: videoElement });
         },
         width: videoElement.videoWidth || 1280,
         height: videoElement.videoHeight || 720,
