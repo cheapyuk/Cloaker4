@@ -1,4 +1,5 @@
 import { FaceDetection } from '@mediapipe/face_detection';
+import { Camera } from '@mediapipe/camera_utils';
 
 /**
  * FaceDetectionManager handles MediaPipe face detection
@@ -22,10 +23,7 @@ class FaceDetectionManager {
     
     // Performance tracking
     this.lastDetectionTime = 0;
-    this.lastFrameTime = 0;
     this.detectionCount = 0;
-    this.targetFps = 10; // Target 10 FPS for detection
-    this.frameInterval = 1000 / this.targetFps;
   }
 
   /**
@@ -78,7 +76,7 @@ class FaceDetectionManager {
   }
 
   /**
-   * Start face detection on a video element
+   * Start face detection on a video element using Camera utility
    * @param {HTMLVideoElement} videoElement - The video element to detect faces from
    */
   async start(videoElement) {
@@ -93,12 +91,20 @@ class FaceDetectionManager {
 
     try {
       this.videoElement = videoElement;
+      
+      // Use MediaPipe Camera utility - this is the official way
+      this.camera = new Camera(videoElement, {
+        onFrame: async () => {
+          await this.faceDetection.send({ image: videoElement });
+        },
+        width: videoElement.videoWidth || 1280,
+        height: videoElement.videoHeight || 720,
+      });
+      
+      await this.camera.start();
       this.isRunning = true;
       
-      // Start detection loop
-      this.detectLoop();
-      
-      console.log('FaceDetectionManager started');
+      console.log('FaceDetectionManager started with Camera utility');
     } catch (error) {
       console.error('Failed to start FaceDetectionManager:', error);
       this.onError(error);
@@ -107,43 +113,13 @@ class FaceDetectionManager {
   }
 
   /**
-   * Detection loop
-   */
-  detectLoop() {
-    if (!this.isRunning || !this.videoElement) {
-      console.log('🛑 Detection loop stopped');
-      return;
-    }
-
-    const now = performance.now();
-    const elapsed = now - this.lastFrameTime;
-
-    // Only process frame if enough time has passed (throttle to target FPS)
-    if (elapsed >= this.frameInterval) {
-      this.lastFrameTime = now;
-      
-      try {
-        if (this.videoElement.readyState >= 2) {
-          // Don't await - send() triggers onResults callback separately
-          this.faceDetection.send({ image: this.videoElement });
-        } else {
-          console.log('⏳ Video not ready, state:', this.videoElement.readyState);
-        }
-      } catch (error) {
-        console.error('❌ Detection error:', error);
-      }
-    }
-
-    // Continue loop
-    if (this.isRunning) {
-      requestAnimationFrame(() => this.detectLoop());
-    }
-  }
-
-  /**
    * Stop face detection
    */
-  stop() {
+  async stop() {
+    if (this.camera) {
+      await this.camera.stop();
+      this.camera = null;
+    }
     this.isRunning = false;
     this.videoElement = null;
     console.log('FaceDetectionManager stopped');
