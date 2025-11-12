@@ -5,8 +5,10 @@ import { Button } from './components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './components/ui/dialog';
 import { Alert, AlertDescription } from './components/ui/alert';
-import { Maximize2, Minimize2, Camera, AlertCircle, RotateCcw } from 'lucide-react';
+import { Switch } from './components/ui/switch';
+import { Maximize2, Minimize2, Camera, AlertCircle, RotateCcw, Scan } from 'lucide-react';
 import { Toaster, toast } from 'sonner';
+import { useFaceDetection } from './hooks/useFaceDetection';
 
 const VRCameraViewer = () => {
   const [cameraStream, setCameraStream] = useState(null);
@@ -19,12 +21,26 @@ const VRCameraViewer = () => {
   const [showControls, setShowControls] = useState(true);
   const [isPortrait, setIsPortrait] = useState(false);
   const [showPermissionDialog, setShowPermissionDialog] = useState(false);
+  const [faceDetectionEnabled, setFaceDetectionEnabled] = useState(false);
   
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const animationFrameRef = useRef(null);
   const hideControlsTimeoutRef = useRef(null);
+
+  // Face detection hook
+  const {
+    faces,
+    isEnabled: isFaceDetectionActive,
+    fps: faceDetectionFps,
+    startDetection,
+    stopDetection
+  } = useFaceDetection({
+    maxFaces: 20,
+    detectionConfidence: 0.5,
+    modelSelection: 0
+  });
 
   // Check orientation
   useEffect(() => {
@@ -151,6 +167,33 @@ const VRCameraViewer = () => {
     }
   };
 
+  // Toggle face detection
+  const toggleFaceDetection = async () => {
+    if (!videoRef.current) return;
+
+    if (faceDetectionEnabled) {
+      stopDetection();
+      setFaceDetectionEnabled(false);
+      toast.info('Face detection disabled');
+    } else {
+      try {
+        await startDetection(videoRef.current);
+        setFaceDetectionEnabled(true);
+        toast.success('Face detection enabled');
+      } catch (err) {
+        toast.error('Failed to start face detection');
+        console.error(err);
+      }
+    }
+  };
+
+  // Start face detection when camera is ready
+  useEffect(() => {
+    if (cameraStream && videoRef.current && faceDetectionEnabled && !isFaceDetectionActive) {
+      startDetection(videoRef.current);
+    }
+  }, [cameraStream, faceDetectionEnabled, isFaceDetectionActive, startDetection]);
+
   // Render to canvas (side-by-side stereoscopic)
   useEffect(() => {
     if (!videoRef.current || !canvasRef.current || !cameraStream) return;
@@ -201,6 +244,36 @@ const VRCameraViewer = () => {
 
         // Draw right eye (duplicate)
         ctx.drawImage(video, halfWidth + offsetX, offsetY, drawWidth, drawHeight);
+
+        // Draw face detection bounding boxes if enabled
+        if (faceDetectionEnabled && faces.length > 0) {
+          faces.forEach((face, index) => {
+            const bbox = face.boundingBox;
+            
+            // Scale bounding box to match canvas coordinates
+            const scaleX = drawWidth;
+            const scaleY = drawHeight;
+            
+            const x = offsetX + bbox.x * scaleX;
+            const y = offsetY + bbox.y * scaleY;
+            const width = bbox.width * scaleX;
+            const height = bbox.height * scaleY;
+            
+            // Draw on left eye
+            ctx.strokeStyle = `hsl(${(index * 360) / faces.length}, 100%, 50%)`;
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x, y, width, height);
+            
+            // Draw face number
+            ctx.fillStyle = ctx.strokeStyle;
+            ctx.font = '16px Arial';
+            ctx.fillText(`Face ${index + 1}`, x + 5, y + 20);
+            
+            // Draw on right eye
+            ctx.strokeRect(halfWidth + x, y, width, height);
+            ctx.fillText(`Face ${index + 1}`, halfWidth + x + 5, y + 20);
+          });
+        }
 
         // Draw center divider
         ctx.fillStyle = 'rgba(210, 210, 220, 0.7)';
@@ -370,20 +443,47 @@ const VRCameraViewer = () => {
               )}
 
               {cameraStream && availableDevices.length > 0 && (
-                <div className="pointer-events-auto bg-[hsl(var(--surface))]/90 backdrop-blur rounded-lg p-4 max-w-md w-full">
-                  <label className="block text-sm font-medium mb-2">Select Camera:</label>
-                  <Select value={selectedDeviceId} onValueChange={switchCamera}>
-                    <SelectTrigger className="w-full bg-[hsl(var(--surface-2))] border-[hsl(var(--border))]" data-testid="camera-select">
-                      <SelectValue placeholder="Choose a camera" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableDevices.map((device, index) => (
-                        <SelectItem key={device.deviceId} value={device.deviceId} data-testid={`camera-option-${index}`}>
-                          {device.label || `Camera ${index + 1}`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="pointer-events-auto bg-[hsl(var(--surface))]/90 backdrop-blur rounded-lg p-4 max-w-md w-full space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Select Camera:</label>
+                    <Select value={selectedDeviceId} onValueChange={switchCamera}>
+                      <SelectTrigger className="w-full bg-[hsl(var(--surface-2))] border-[hsl(var(--border))]" data-testid="camera-select">
+                        <SelectValue placeholder="Choose a camera" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableDevices.map((device, index) => (
+                          <SelectItem key={device.deviceId} value={device.deviceId} data-testid={`camera-option-${index}`}>
+                            {device.label || `Camera ${index + 1}`}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Scan className="w-5 h-5" />
+                      <label className="text-sm font-medium">Face Detection</label>
+                    </div>
+                    <Switch
+                      checked={faceDetectionEnabled}
+                      onCheckedChange={toggleFaceDetection}
+                      data-testid="face-detection-toggle"
+                    />
+                  </div>
+
+                  {faceDetectionEnabled && (
+                    <div className="text-sm space-y-1 text-[hsl(var(--muted))]">
+                      <div className="flex justify-between">
+                        <span>Faces Detected:</span>
+                        <span className="font-medium text-white">{faces.length} / 20</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Detection FPS:</span>
+                        <span className="font-medium text-white">{faceDetectionFps}</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
