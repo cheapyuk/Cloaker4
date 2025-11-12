@@ -43,7 +43,7 @@ class FaceDetectionManager {
       // Create face detection instance
       this.faceDetection = new FaceDetection({
         locateFile: (file) => {
-          const url = `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/${file}`;
+          const url = `https://cdn.jsdelivr.net/npm/@mediapipe/face_detection@0.4/${file}`;
           console.log('📦 Loading:', file);
           return url;
         }
