@@ -239,11 +239,21 @@ const VRCameraViewer = () => {
         ctx.fillStyle = 'hsl(220, 15%, 5%)';
         ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-        // Draw left eye (original)
+        // Draw left eye (original) - clip to left half
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, halfWidth, canvasHeight);
+        ctx.clip();
         ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
+        ctx.restore();
 
-        // Draw right eye (duplicate)
+        // Draw right eye (duplicate) - clip to right half
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(halfWidth, 0, halfWidth, canvasHeight);
+        ctx.clip();
         ctx.drawImage(video, halfWidth + offsetX, offsetY, drawWidth, drawHeight);
+        ctx.restore();
 
         // Draw face detection bounding boxes if enabled
         if (faceDetectionEnabled && faces.length > 0) {
