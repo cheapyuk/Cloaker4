@@ -2,8 +2,9 @@ services:
   - type: web
     name: cloaker4-frontend
     env: node
-    buildCommand: cd frontend && yarn install && yarn build
-    startCommand: cd frontend && yarn start
+    rootDir: frontend
+    buildCommand: yarn install
+    startCommand: yarn start
     envVars:
       - key: NODE_ENV
         value: production
