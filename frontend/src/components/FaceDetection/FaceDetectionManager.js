@@ -22,7 +22,10 @@ class FaceDetectionManager {
     
     // Performance tracking
     this.lastDetectionTime = 0;
+    this.lastFrameTime = 0;
     this.detectionCount = 0;
+    this.targetFps = 10; // Target 10 FPS for detection
+    this.frameInterval = 1000 / this.targetFps;
   }
 
   /**
@@ -112,18 +115,26 @@ class FaceDetectionManager {
       return;
     }
 
-    try {
-      if (this.videoElement.readyState >= 2) {
-        // Don't await - send() triggers onResults callback separately
-        this.faceDetection.send({ image: this.videoElement });
-      } else {
-        console.log('⏳ Video not ready, state:', this.videoElement.readyState);
+    const now = performance.now();
+    const elapsed = now - this.lastFrameTime;
+
+    // Only process frame if enough time has passed (throttle to target FPS)
+    if (elapsed >= this.frameInterval) {
+      this.lastFrameTime = now;
+      
+      try {
+        if (this.videoElement.readyState >= 2) {
+          // Don't await - send() triggers onResults callback separately
+          this.faceDetection.send({ image: this.videoElement });
+        } else {
+          console.log('⏳ Video not ready, state:', this.videoElement.readyState);
+        }
+      } catch (error) {
+        console.error('❌ Detection error:', error);
       }
-    } catch (error) {
-      console.error('❌ Detection error:', error);
     }
 
-    // Continue loop - run at ~30 FPS
+    // Continue loop
     if (this.isRunning) {
       requestAnimationFrame(() => this.detectLoop());
     }
