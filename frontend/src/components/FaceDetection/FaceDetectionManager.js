@@ -46,12 +46,6 @@ class FaceDetectionManager {
         }
       });
 
-      // Set up result callback FIRST
-      this.faceDetection.onResults((results) => {
-        console.log('👤 Faces detected:', results.detections?.length || 0);
-        this.handleResults(results);
-      });
-
       // Configure face detection options
       await this.faceDetection.setOptions({
         model: 'short',
@@ -62,6 +56,14 @@ class FaceDetectionManager {
 
       // Wait for complete initialization
       await this.faceDetection.initialize();
+      
+      // Set up result callback AFTER initialization
+      this.faceDetection.onResults((results) => {
+        console.log('👤 Faces detected:', results.detections?.length || 0);
+        this.handleResults(results);
+      });
+      
+      console.log('📝 Callback registered');
       
       this.isInitialized = true;
       console.log('✅ FaceDetectionManager ready!');
