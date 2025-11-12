@@ -289,7 +289,8 @@ const VRCameraViewer = () => {
         playsInline
         autoPlay
         muted
-        className="hidden"
+        className="absolute -left-[9999px] opacity-0 pointer-events-none w-0 h-0"
+        style={{ visibility: 'hidden' }}
         data-testid="video-element"
       />
 
