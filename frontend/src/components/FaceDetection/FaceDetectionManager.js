@@ -104,7 +104,7 @@ class FaceDetectionManager {
   /**
    * Detection loop
    */
-  async detectLoop() {
+  detectLoop() {
     if (!this.isRunning || !this.videoElement) {
       console.log('🛑 Detection loop stopped');
       return;
@@ -112,9 +112,8 @@ class FaceDetectionManager {
 
     try {
       if (this.videoElement.readyState >= 2) {
-        console.log('📸 Sending frame to MediaPipe...');
-        await this.faceDetection.send({ image: this.videoElement });
-        console.log('✓ Frame sent successfully');
+        // Don't await - send() triggers onResults callback separately
+        this.faceDetection.send({ image: this.videoElement });
       } else {
         console.log('⏳ Video not ready, state:', this.videoElement.readyState);
       }
@@ -122,9 +121,9 @@ class FaceDetectionManager {
       console.error('❌ Detection error:', error);
     }
 
-    // Continue loop
+    // Continue loop - run at ~30 FPS
     if (this.isRunning) {
-      setTimeout(() => this.detectLoop(), 100); // 10 FPS for testing
+      requestAnimationFrame(() => this.detectLoop());
     }
   }
 
