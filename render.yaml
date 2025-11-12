@@ -3,10 +3,8 @@ services:
     name: cloaker4-frontend
     env: node
     rootDir: frontend
-    buildCommand: yarn install
-    startCommand: yarn start
+    buildCommand: yarn install && yarn build
+    startCommand: npx serve -s build -l $PORT
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 10000
