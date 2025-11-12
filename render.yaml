@@ -1,14 +1,11 @@
 services:
   - type: web
     name: cloaker4-frontend
-    env: static
+    env: node
     buildCommand: cd frontend && yarn install && yarn build
-    staticPublishPath: ./frontend/build
-    headers:
-      - path: /*
-        name: Cache-Control
-        value: public, max-age=0, must-revalidate
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
+    startCommand: cd frontend && yarn start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
